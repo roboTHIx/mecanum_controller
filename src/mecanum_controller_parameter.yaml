@@ -1,24 +1,36 @@
 mecanum_controller:
-  front_left_wheel_names: {
+  # wheel_names: {
+  #   type: string_array,
+  #   default_value: [],
+  #   description: "List of the wheels link names",
+  # }
+  # wheel_angles: {
+  #   type: double_array,
+  #   default_value: [],
+  #   description: "List of the wheels angles (absolut to the x axis of the system)",
+  # }
+
+  front_left_wheel_name: {
     type: string,
     default_value: "",
     description: "Link name of the front left wheel",
   }
-  front_right_wheel_names: {
+  front_right_wheel_name: {
     type: string,
     default_value: "",
     description: "Link name of the front right wheel",
   }
-  rear_left_wheel_names: {
+  rear_left_wheel_name: {
     type: string,
     default_value: "",
     description: "Link name of the rear left wheel",
   }
-  rear_right_wheel_names: {
+  rear_right_wheel_name: {
     type: string,
     default_value: "",
     description: "Link name of the rear right wheel",
   }
+
   wheel_separation_x: {
     type: double,
     default_value: 0.0,
@@ -29,16 +41,27 @@ mecanum_controller:
     default_value: 0.0,
     description: "Shortest distance between the front and rear wheels. If this parameter is wrong, the robot will not behave correctly.",
   }
+  wheel_separation_x_multiplier: {
+    type: double,
+    default_value: 1.0,
+    description: "Correction factor for wheel separation in x direction (TODO(destogl): Please help me describe this correctly)",
+  }
+  wheel_separation_y_multiplier: {
+    type: double,
+    default_value: 1.0,
+    description: "Correction factor for wheel separation in y direction (TODO(destogl): Please help me describe this correctly)",
+  }
+  
   wheel_radius: {
     type: double,
     default_value: 0.0,
     description: "Radius of a wheel, i.e., wheels size, used for transformation of linear velocity into wheel rotations. If this parameter is wrong the robot will move faster or slower then expected.",
   }
-  wheel_separation_multiplier: {
-    type: double,
-    default_value: 1.0,
-    description: "Correction factor for wheel separation (TODO(destogl): Please help me describe this correctly)",
-  }
+  # wheel_radius_multipliers: {
+  #   type: double_array,
+  #   default_value: [],
+  #   description: "Correction factors when radius of the wheels differs from the nominal value in ``wheel_radius`` parameter.",
+  # }
   front_left_wheel_radius_multiplier: {
     type: double,
     default_value: 1.0,
@@ -59,6 +82,7 @@ mecanum_controller:
     default_value: 1.0,
     description: "Correction factor when radius of rear right wheel differs from the nominal value in ``wheel_radius`` parameter.",
   }
+
   tf_frame_prefix_enable: {
     type: bool,
     default_value: true,
@@ -69,6 +93,7 @@ mecanum_controller:
     default_value: "",
     description:  "(optional) Prefix to be appended to the tf frames, will be added to odom_id and base_frame_id before publishing. If the parameter is empty, controller's namespace will be used.",
   }
+
   odom_frame_id: {
     type: string,
     default_value: "odom",
@@ -79,6 +104,7 @@ mecanum_controller:
     default_value: "base_link",
     description: "Name of the robot's base frame that is child of the odometry frame.",
   }
+
   pose_covariance_diagonal: {
     type: double_array,
     default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -89,6 +115,7 @@ mecanum_controller:
     default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     description: "Odometry covariance for the encoder output of the robot for the speed. These values should be tuned to your robot's sample odometry data, but these values are a good place to start: ``[0.001, 0.001, 0.001, 0.001, 0.001, 0.01]``.",
   }
+
   open_loop: {
     type: bool,
     default_value: false,
@@ -129,8 +156,46 @@ mecanum_controller:
     default_value: 50.0, # Hz
     description: "Publishing rate (Hz) of the odometry and TF messages.",
   }
+
   linear:
     x:
+      has_velocity_limits: {
+        type: bool,
+        default_value: false,
+      }
+      has_acceleration_limits: {
+        type: bool,
+        default_value: false,
+      }
+      has_jerk_limits: {
+        type: bool,
+        default_value: false,
+      }
+      max_velocity: {
+        type: double,
+        default_value: .NAN,
+      }
+      min_velocity: {
+        type: double,
+        default_value: .NAN,
+      }
+      max_acceleration: {
+        type: double,
+        default_value: .NAN,
+      }
+      min_acceleration: {
+        type: double,
+        default_value: .NAN,
+      }
+      max_jerk: {
+        type: double,
+        default_value: .NAN,
+      }
+      min_jerk: {
+        type: double,
+        default_value: .NAN,
+      }
+    y:
       has_velocity_limits: {
         type: bool,
         default_value: false,

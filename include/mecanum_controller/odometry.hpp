@@ -18,23 +18,24 @@ public:
     void init(const rclcpp::Time & time);
     bool update(double front_left_pos, double front_right_pos, double rear_left_pos, double rear_right_pos, const rclcpp::Time & time);
     bool updateFromVelocity(double front_left_vel, double front_right_vel, double rear_left_vel, double rear_right_vel, const rclcpp::Time & time);
-    void updateOpenLoop(double linear, double angular, const rclcpp::Time & time);
+    void updateOpenLoop(double linear_x, double linear_y, double angular, const rclcpp::Time & time);
     void resetOdometry();
 
     double getX() const { return _x; }
     double getY() const { return _y; }
     double getHeading() const { return _heading; }
-    double getLinear() const { return _linear; }
+    double getLinearX() const { return _linear_x; }
+    double getLinearY() const { return _linear_y; }
     double getAngular() const { return _angular; }
 
-    void setWheelParams(double wheel_separation, double front_left_wheel_radius, double front_right_wheel_radius, double rear_left_wheel_radius, double rear_right_wheel_radius);
+    void setWheelParams(double wheel_separation_x, double wheel_separation_y, double front_left_wheel_radius, double front_right_wheel_radius, double rear_left_wheel_radius, double rear_right_wheel_radius);
     void setVelocityRollingWindowSize(size_t velocity_rolling_window_size);
 
 private:
     using RollingMeanAccumulator = rcppmath::RollingMeanAccumulator<double>;
 
-    void integrateRungeKutta2(double linear, double angular);
-    void integrateExact(double linear, double angular);
+    void integrateRungeKutta2(double linear_x, double linear_y, double angular);
+    void integrateExact(double linear_x, double linear_y, double angular);
     void resetAccumulators();
 
     // Current timestamp:
@@ -46,11 +47,13 @@ private:
     double _heading;  // [rad]
 
     // Current velocity:
-    double _linear;   //   [m/s]
+    double _linear_x; //   [m/s]
+    double _linear_y; //   [m/s]
     double _angular;  // [rad/s]
 
     // Wheel kinematic parameters [m]:
-    double _wheel_separation;
+    double _wheel_separation_x;
+    double _wheel_separation_y;
     double _front_left_wheel_radius;
     double _front_right_wheel_radius;
     double _rear_left_wheel_radius;
@@ -64,7 +67,8 @@ private:
 
     // Rolling mean accumulators for the linear and angular velocities:
     size_t _velocity_rolling_window_size;
-    RollingMeanAccumulator _linear_accumulator;
+    RollingMeanAccumulator _linear_x_accumulator;
+    RollingMeanAccumulator _linear_y_accumulator;
     RollingMeanAccumulator _angular_accumulator;
 };
 

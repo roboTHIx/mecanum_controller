@@ -74,16 +74,13 @@ protected:
         std::reference_wrapper<const hardware_interface::LoanedStateInterface> feedback;
         std::reference_wrapper<hardware_interface::LoanedCommandInterface> velocity;
     };
+    const char *feedback_type() const;
+    controller_interface::CallbackReturn configure_wheel(const std::string &wheel_name, std::vector<WheelHandle> &registered_handle);
 
-    const char * feedback_type() const;
-    controller_interface::CallbackReturn configure_side(
-        const std::string & side, const std::vector<std::string> & wheel_names,
-        std::vector<WheelHandle> & registered_handles);
-
-    std::vector<WheelHandle> _registered_front_left_wheel_handles;
-    std::vector<WheelHandle> _registered_front_right_wheel_handles;
-    std::vector<WheelHandle> _registered_rear_left_wheel_handles;
-    std::vector<WheelHandle> _registered_rear_right_wheel_handles;
+    std::vector<WheelHandle> _registered_front_left_wheel_handle;
+    std::vector<WheelHandle> _registered_front_right_wheel_handle;
+    std::vector<WheelHandle> _registered_rear_left_wheel_handle;
+    std::vector<WheelHandle> _registered_rear_right_wheel_handle;
 
     // Parameters from ROS for mecanum_controller
     std::shared_ptr<ParamListener> _param_listener;
@@ -109,7 +106,8 @@ protected:
     std::queue<Twist> _previous_commands;  // last two commands
 
     // speed limiters
-    SpeedLimiter _limiter_linear;
+    SpeedLimiter _limiter_linear_x;
+    SpeedLimiter _limiter_linear_y;
     SpeedLimiter _limiter_angular;
 
     bool _publish_limited_velocity = false;
