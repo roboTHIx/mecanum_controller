@@ -3,6 +3,8 @@
 
 #include <cmath>
 
+#include <iostream>
+
 #include "rclcpp/time.hpp"
 #include "rcppmath/rolling_mean_accumulator.hpp"
 
