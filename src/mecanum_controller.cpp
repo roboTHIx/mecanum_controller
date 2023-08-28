@@ -69,22 +69,6 @@ InterfaceConfiguration MecanumController::command_interface_configuration() cons
     conf_names.push_back(_params.rear_left_wheel_name   + "/" + HW_IF_VELOCITY);
     conf_names.push_back(_params.rear_right_wheel_name  + "/" + HW_IF_VELOCITY);
 
-    // for (const auto &joint_name : _params.front_left_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + HW_IF_VELOCITY);
-    // }
-    // for (const auto &joint_name : _params.front_right_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + HW_IF_VELOCITY);
-    // }
-    // for (const auto &joint_name : _params.rear_left_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + HW_IF_VELOCITY);
-    // }
-    // for (const auto &joint_name : _params.rear_right_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + HW_IF_VELOCITY);
-    // }
     return {interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -98,22 +82,6 @@ InterfaceConfiguration MecanumController::state_interface_configuration() const
     conf_names.push_back(_params.rear_left_wheel_name   + "/" + feedback_type());
     conf_names.push_back(_params.rear_right_wheel_name  + "/" + feedback_type());
     
-    // for (const auto &joint_name : _params.front_left_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + feedback_type());
-    // }
-    // for (const auto &joint_name : _params.front_right_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + feedback_type());
-    // }
-    // for (const auto &joint_name : _params.rear_left_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + feedback_type());
-    // }
-    // for (const auto &joint_name : _params.rear_right_wheel_name)
-    // {
-    //     conf_names.push_back(joint_name + "/" + feedback_type());
-    // }
     return {interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -149,8 +117,7 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
         last_command_msg->twist.angular.z = 0.0;
     }
 
-    // command may be limited further by SpeedLimit,
-    // without affecting the stored twist command
+    // Command may be limited further by SpeedLimit, without affecting the stored twist command
     Twist command            = *last_command_msg;
     double &linear_command_x = command.twist.linear.x;
     double &linear_command_y = command.twist.linear.y;
@@ -166,10 +133,45 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
     const double rear_left_wheel_radius   = _params.rear_left_wheel_radius_multiplier   * _params.wheel_radius;
     const double rear_right_wheel_radius  = _params.rear_right_wheel_radius_multiplier  * _params.wheel_radius;
 
+    auto &last_command           = _previous_commands.back().twist;
+    auto &second_to_last_command = _previous_commands.front().twist;
+
+    _limiter_linear_x.limit(linear_command_x, last_command.linear.x, second_to_last_command.linear.x, period.seconds());
+    _limiter_linear_y.limit(linear_command_y, last_command.linear.y, second_to_last_command.linear.y, period.seconds());
+    _limiter_angular.limit(angular_command, last_command.angular.z, second_to_last_command.angular.z, period.seconds());
+
+    _previous_commands.pop();
+    _previous_commands.emplace(command);
+
+    // Publish limited velocity
+    if (_publish_limited_velocity && _realtime_limited_velocity_publisher->trylock())
+    {
+        auto &limited_velocity_command        = _realtime_limited_velocity_publisher->msg_;
+        limited_velocity_command.header.stamp = time;
+        limited_velocity_command.twist        = command.twist;
+        _realtime_limited_velocity_publisher->unlockAndPublish();
+    }
+
+    // Compute wheels velocities:
+    // List of wheel link names and angles
+    const double lxly = (wheel_separation_x / 2.0) + (wheel_separation_y / 2.0); 
+    const double front_left_velocity  = (linear_command_x - linear_command_y - lxly * angular_command) / front_left_wheel_radius;
+    const double front_right_velocity = (linear_command_x + linear_command_y + lxly * angular_command) / front_right_wheel_radius;
+    const double rear_left_velocity   = (linear_command_x + linear_command_y - lxly * angular_command) / rear_left_wheel_radius;
+    const double rear_right_velocity  = (linear_command_x - linear_command_y + lxly * angular_command) / rear_right_wheel_radius;
+
+    // Set wheels velocities:
+    // List of wheel link names and angles
+    _registered_front_left_wheel_handle[0].velocity.get().set_value(front_left_velocity);
+    _registered_front_right_wheel_handle[0].velocity.get().set_value(front_right_velocity);
+    _registered_rear_left_wheel_handle[0].velocity.get().set_value(rear_left_velocity);
+    _registered_rear_right_wheel_handle[0].velocity.get().set_value(rear_right_velocity);
+
+    // Odometry
     if (_params.open_loop)
     {
-        _odometry.updateOpenLoop(linear_command_x, linear_command_y, angular_command, time);
-        
+        _odometry.updateFromVelocity(front_left_velocity, front_right_velocity, rear_left_velocity, rear_right_velocity, time);
+        // _odometry.updateOpenLoop(linear_command_x, linear_command_y, angular_command, time);
     }
     else
     {
@@ -181,7 +183,7 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
         if (std::isnan(front_left_feedback) || std::isnan(front_right_feedback) ||
             std::isnan(rear_left_feedback)  || std::isnan(rear_right_feedback))
         {
-            RCLCPP_ERROR(logger, "Either the front_left, front_right, rear_left or rear_right wheel %s is invalid.", feedback_type());
+            RCLCPP_ERROR(logger, "Either of the wheels %s is invalid.", feedback_type());
             return controller_interface::return_type::ERROR;
         }
 
@@ -251,39 +253,6 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
             _realtime_odometry_transform_publisher->unlockAndPublish();
         }
     }
-
-    auto &last_command           = _previous_commands.back().twist;
-    auto &second_to_last_command = _previous_commands.front().twist;
-    _limiter_linear_x.limit(linear_command_x, last_command.linear.x, second_to_last_command.linear.x, period.seconds());
-    _limiter_linear_y.limit(linear_command_y, last_command.linear.y, second_to_last_command.linear.y, period.seconds());
-    _limiter_angular.limit(angular_command, last_command.angular.z, second_to_last_command.angular.z, period.seconds());
-
-    _previous_commands.pop();
-    _previous_commands.emplace(command);
-
-    // Publish limited velocity
-    if (_publish_limited_velocity && _realtime_limited_velocity_publisher->trylock())
-    {
-        auto &limited_velocity_command        = _realtime_limited_velocity_publisher->msg_;
-        limited_velocity_command.header.stamp = time;
-        limited_velocity_command.twist        = command.twist;
-        _realtime_limited_velocity_publisher->unlockAndPublish();
-    }
-
-    // Compute wheels velocities:
-    // List of wheel link names and angles
-    const double lxly = (wheel_separation_x / 2.0) + (wheel_separation_y / 2.0); 
-    const double front_left_velocity  = (linear_command_x - linear_command_y - lxly * angular_command) / front_left_wheel_radius;
-    const double front_right_velocity = (linear_command_x + linear_command_y + lxly * angular_command) / front_right_wheel_radius;
-    const double rear_left_velocity   = (linear_command_x + linear_command_y - lxly * angular_command) / rear_left_wheel_radius;
-    const double rear_right_velocity  = (linear_command_x - linear_command_y + lxly * angular_command) / rear_right_wheel_radius;
-
-    // Set wheels velocities:
-    // List of wheel link names and angles
-    _registered_front_left_wheel_handle[0].velocity.get().set_value(front_left_velocity);
-    _registered_front_right_wheel_handle[0].velocity.get().set_value(front_right_velocity);
-    _registered_rear_left_wheel_handle[0].velocity.get().set_value(rear_left_velocity);
-    _registered_rear_right_wheel_handle[0].velocity.get().set_value(rear_right_velocity);
 
     return controller_interface::return_type::OK;
 }
