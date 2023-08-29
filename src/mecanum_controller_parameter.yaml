@@ -51,7 +51,13 @@ mecanum_controller:
     default_value: 1.0,
     description: "Correction factor for wheel separation in y direction (TODO(destogl): Please help me describe this correctly)",
   }
-  
+  wheel_max_rotational_speed: {
+    type: double,
+    default_value: 0.0,
+    description: "Maximum rotational speed of the wheels. If set to 0.0, this option will be ignored. [rad/s]"
+  }
+
+
   wheel_radius: {
     type: double,
     default_value: 0.0,
