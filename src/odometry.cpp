@@ -72,26 +72,26 @@ bool Odometry::update(double front_left_pos, double front_right_pos, double rear
 bool Odometry::updateFromVelocity(double front_left_vel, double front_right_vel, double rear_left_vel, double rear_right_vel, const rclcpp::Time & time)
 {
     // Compute linear and angular:
-    const double linear_x = ( front_left_vel  * _front_left_wheel_radius 
-                            + front_right_vel * _front_right_wheel_radius 
-                            + rear_left_vel   * _rear_left_wheel_radius 
-                            + rear_right_vel  * _rear_right_wheel_radius)
-                            / 4.0;
+    const double linear_x = (+ front_left_vel  * _front_left_wheel_radius 
+                             + front_right_vel * _front_right_wheel_radius 
+                             + rear_left_vel   * _rear_left_wheel_radius 
+                             + rear_right_vel  * _rear_right_wheel_radius)
+                             / 4.0;
 
-    const double linear_y = (-front_left_vel  * _front_left_wheel_radius 
-                            + front_right_vel * _front_right_wheel_radius 
-                            + rear_left_vel   * _rear_left_wheel_radius 
-                            - rear_right_vel  * _rear_right_wheel_radius)
-                            / 4.0;
+    const double linear_y = (- front_left_vel  * _front_left_wheel_radius 
+                             + front_right_vel * _front_right_wheel_radius 
+                             + rear_left_vel   * _rear_left_wheel_radius 
+                             - rear_right_vel  * _rear_right_wheel_radius)
+                             / 4.0;
 
-    const double angular  = (-front_left_vel  * _front_left_wheel_radius 
-                            + front_right_vel * _front_right_wheel_radius 
-                            - rear_left_vel   * _rear_left_wheel_radius 
-                            + rear_right_vel  * _rear_right_wheel_radius)
-                            / (4.0 * (_wheel_separation_x / 2.0 + _wheel_separation_y / 2.0));
-    
+    const double angular  = (- front_left_vel  * _front_left_wheel_radius 
+                             + front_right_vel * _front_right_wheel_radius 
+                             - rear_left_vel   * _rear_left_wheel_radius 
+                             + rear_right_vel  * _rear_right_wheel_radius)
+                             / (4.0 * (_wheel_separation_x / 2.0 + _wheel_separation_y / 2.0));
+
     // std::cout << "FL: " << front_left_vel << " - FR: " << front_right_vel << " - RL: " << rear_left_vel << " - RR: " << rear_right_vel << std::endl;
-    // std::cout << "Linear X: " << linear_x << " m/s" << " - Y: " << linear_y << " m/s" << " - Angular Z: " << angular << " rad/s" << std::endl;
+    // std::cout << "Lin X: " << linear_x << " - Lin Y: " << linear_y << " - Ang Z: " << angular << std::endl;
 
     // Integrate odometry:
     const double dt = time.seconds() - _timestamp.seconds();
@@ -168,11 +168,21 @@ void Odometry::integrateExact(double linear_x, double linear_y, double angular)
     else
     {
         /// Exact integration (should solve problems when angular is zero):
-        const double heading_old = _heading;
-        const double r = sqrt(linear_x * linear_x + linear_y * linear_y) / angular;
-        _heading += angular;
-        _x +=  r * (sin(_heading) - sin(heading_old));
-        _y += -r * (cos(_heading) - cos(heading_old));
+        const double lin_xy  = sqrt(linear_x * linear_x + linear_y * linear_y);
+        const double direction = atan2(angular * angular, lin_xy);
+
+        _x       += lin_xy * cos(direction - angular);
+        _y       += lin_xy * sin(direction - angular);
+        _heading += direction;
+
+        // const double heading_old = _heading;
+        // const double r = sqrt(linear_x * linear_x + linear_y * linear_y) / angular;
+        // _heading += angular;
+        // _x +=  r * (sin(_heading) - sin(heading_old));
+        // _y += -r * (cos(_heading) - cos(heading_old));
+
+        // std::cout << "X: " << linear_x << " - Y: " << linear_y << " - A: " << angular << std::endl;
+        // std::cout << "X: " << _x << " - Y: " << _y << " - H: " << _heading << std::endl;
     }
 }
 
