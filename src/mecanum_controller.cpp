@@ -153,15 +153,39 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
     }
 
     // Compute wheels velocities:
-    // List of wheel link names and angles
-    const double lxly = (wheel_separation_x / 2.0) + (wheel_separation_y / 2.0); 
-    const double front_left_velocity  = (linear_command_x - linear_command_y - lxly * angular_command) / front_left_wheel_radius;
-    const double front_right_velocity = (linear_command_x + linear_command_y + lxly * angular_command) / front_right_wheel_radius;
-    const double rear_left_velocity   = (linear_command_x + linear_command_y - lxly * angular_command) / rear_left_wheel_radius;
-    const double rear_right_velocity  = (linear_command_x - linear_command_y + lxly * angular_command) / rear_right_wheel_radius;
+    // TODO: List of wheel link names and angles
+    const double lxly = (wheel_separation_x / 2.0) + (wheel_separation_y / 2.0);
+    double front_left_velocity  = (linear_command_x - linear_command_y - lxly * angular_command) / front_left_wheel_radius;
+    double front_right_velocity = (linear_command_x + linear_command_y + lxly * angular_command) / front_right_wheel_radius;
+    double rear_left_velocity   = (linear_command_x + linear_command_y - lxly * angular_command) / rear_left_wheel_radius;
+    double rear_right_velocity  = (linear_command_x - linear_command_y + lxly * angular_command) / rear_right_wheel_radius;
+
+    // Check if wheel motor is able to reach the calculated wheel rotational speed
+    // TODO: Trim the output cmd_vel to the reduced wheel rotational speed
+    if (abs(front_left_velocity) > _params.wheel_max_rotational_speed || abs(front_right_velocity) > _params.wheel_max_rotational_speed ||
+        abs(rear_left_velocity) > _params.wheel_max_rotational_speed || abs(rear_right_velocity) > _params.wheel_max_rotational_speed)
+    {
+        double reduce_factor = _params.wheel_max_rotational_speed / abs(front_left_velocity);
+        if (_params.wheel_max_rotational_speed / abs(front_right_velocity) < reduce_factor)
+        {
+            reduce_factor = _params.wheel_max_rotational_speed / abs(front_right_velocity);
+        }
+        if (_params.wheel_max_rotational_speed / abs(rear_left_velocity) < reduce_factor)
+        {
+            reduce_factor = _params.wheel_max_rotational_speed / abs(rear_left_velocity);
+        }
+        if (_params.wheel_max_rotational_speed / abs(rear_right_velocity) < reduce_factor)
+        {
+            reduce_factor = _params.wheel_max_rotational_speed / abs(rear_right_velocity);
+        }
+        front_left_velocity  *= reduce_factor;
+        front_right_velocity *= reduce_factor;
+        rear_left_velocity   *= reduce_factor;
+        rear_right_velocity  *= reduce_factor;
+    }
 
     // Set wheels velocities:
-    // List of wheel link names and angles
+    // TODO: List of wheel link names and angles
     _registered_front_left_wheel_handle[0].velocity.get().set_value(front_left_velocity);
     _registered_front_right_wheel_handle[0].velocity.get().set_value(front_right_velocity);
     _registered_rear_left_wheel_handle[0].velocity.get().set_value(rear_left_velocity);
@@ -171,7 +195,6 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
     if (_params.open_loop)
     {
         _odometry.updateFromVelocity(front_left_velocity, front_right_velocity, rear_left_velocity, rear_right_velocity, time);
-        // _odometry.updateOpenLoop(linear_command_x, linear_command_y, angular_command, time);
     }
     else
     {
