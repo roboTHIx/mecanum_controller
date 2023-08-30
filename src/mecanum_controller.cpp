@@ -162,8 +162,9 @@ controller_interface::return_type MecanumController::update(const rclcpp::Time &
 
     // Check if wheel motor is able to reach the calculated wheel rotational speed
     // TODO: Trim the output cmd_vel to the reduced wheel rotational speed
-    if (abs(front_left_velocity) > _params.wheel_max_rotational_speed || abs(front_right_velocity) > _params.wheel_max_rotational_speed ||
-        abs(rear_left_velocity) > _params.wheel_max_rotational_speed || abs(rear_right_velocity) > _params.wheel_max_rotational_speed)
+    if (_params.wheel_max_rotational_speed != 0.0 &&
+        (abs(front_left_velocity) > _params.wheel_max_rotational_speed || abs(front_right_velocity) > _params.wheel_max_rotational_speed ||
+        abs(rear_left_velocity) > _params.wheel_max_rotational_speed || abs(rear_right_velocity) > _params.wheel_max_rotational_speed))
     {
         double reduce_factor = _params.wheel_max_rotational_speed / abs(front_left_velocity);
         if (_params.wheel_max_rotational_speed / abs(front_right_velocity) < reduce_factor)
