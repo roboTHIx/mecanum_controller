@@ -1,4 +1,4 @@
-# mecanum_controller
+# Mecanum Controller
 
 This package offers a controller module designed to oversee a mecanum wheel platform utilizing the ROS2 Control framework.
 Presently, the controller is optimized for a mecanum platform equipped with four wheels, although this specification could evolve in the coming times.
