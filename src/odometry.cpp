@@ -90,9 +90,6 @@ bool Odometry::updateFromVelocity(double front_left_vel, double front_right_vel,
                              + rear_right_vel  * _rear_right_wheel_radius)
                              / (4.0 * (_wheel_separation_x / 2.0 + _wheel_separation_y / 2.0));
 
-    // std::cout << "FL: " << front_left_vel << " - FR: " << front_right_vel << " - RL: " << rear_left_vel << " - RR: " << rear_right_vel << std::endl;
-    // std::cout << "Lin X: " << linear_x << " - Lin Y: " << linear_y << " - Ang Z: " << angular << std::endl;
-
     // Integrate odometry:
     const double dt = time.seconds() - _timestamp.seconds();
     _timestamp = time;
@@ -146,44 +143,30 @@ void Odometry::setVelocityRollingWindowSize(size_t velocity_rolling_window_size)
     resetAccumulators();
 }
 
-
-
-void Odometry::integrateRungeKutta2(double linear_x, double linear_y, double angular)
+void Odometry::integrateExact(double linear_x, double linear_y, double angular_z)
 {
-    // TODO: check if direction calc is correct
-    const double direction = _heading + angular * 0.5;
-
-    /// Runge-Kutta 2nd order integration:
-    _x       += (linear_x * cos(direction)) - (linear_y * sin(direction));
-    _y       += (linear_x * sin(direction)) + (linear_y * cos(direction));
-    _heading += angular;
-}
-
-void Odometry::integrateExact(double linear_x, double linear_y, double angular)
-{
-    if (fabs(angular) < 1e-6)
+    double direction = 0.0;
+    if (linear_x == 0.0)
     {
-        integrateRungeKutta2(linear_x, linear_y, angular);
+        if (linear_y > 0.0)
+        {
+            direction = M_PI_2;
+        }
+        else
+        {
+            direction = -M_PI_2;
+        }        
     }
     else
     {
-        /// Exact integration (should solve problems when angular is zero):
-        const double lin_xy  = sqrt(linear_x * linear_x + linear_y * linear_y);
-        const double direction = atan2(angular * angular, lin_xy);
-
-        _x       += lin_xy * cos(direction - angular);
-        _y       += lin_xy * sin(direction - angular);
-        _heading += direction;
-
-        // const double heading_old = _heading;
-        // const double r = sqrt(linear_x * linear_x + linear_y * linear_y) / angular;
-        // _heading += angular;
-        // _x +=  r * (sin(_heading) - sin(heading_old));
-        // _y += -r * (cos(_heading) - cos(heading_old));
-
-        // std::cout << "X: " << linear_x << " - Y: " << linear_y << " - A: " << angular << std::endl;
-        // std::cout << "X: " << _x << " - Y: " << _y << " - H: " << _heading << std::endl;
+        direction = atan2(linear_y, linear_x);
     }
+
+    const double linear_magnitude = sqrt(linear_x * linear_x + linear_y + linear_y);
+
+    _x       += linear_magnitude * cos(angular_z / 2.0 + direction + _heading);
+    _y       += linear_magnitude * sin(angular_z / 2.0 + direction + _heading);
+    _heading += angular_z;
 }
 
 void Odometry::resetAccumulators()

@@ -36,7 +36,6 @@ public:
 private:
     using RollingMeanAccumulator = rcppmath::RollingMeanAccumulator<double>;
 
-    void integrateRungeKutta2(double linear_x, double linear_y, double angular);
     void integrateExact(double linear_x, double linear_y, double angular);
     void resetAccumulators();
 
